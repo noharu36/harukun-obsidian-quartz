@@ -94,6 +94,34 @@ export function createFileParser(ctx: BuildCtx, fps: FilePath[]) {
         // strip leading and trailing whitespace
         file.value = file.value.toString().trim()
 
+        // frontmatter抽出
+        const valueStr = file.value.toString()
+
+        let frontmatter: Record<string, any> | null = null
+        if (valueStr.startsWith('---')) {
+          const endIdx = valueStr.indexOf('---', 3)
+          if (endIdx !== -1) {
+            const fmText = valueStr.substring(3, endIdx).trim()
+            frontmatter = {} as Record<string, any>
+            for (const line of fmText.split('\n')) {
+              const m = line.match(/^([a-zA-Z0-9_]+):\s*(.*)$/)
+              if (m) {
+                const key = m[1]
+                const val = m[2]
+                frontmatter[key] = val
+              }
+            }
+          }
+        }
+
+        // publish: "true" 以外とfrontmatterなしは除外
+        if (!frontmatter || frontmatter["publish"] !== "true") {
+          if (argv.verbose) {
+            console.log(`[markdown] ${fp} skipped (no frontmatter or publish:false)`)
+          }
+          continue
+        }
+
         // Text -> Text transforms
         for (const plugin of cfg.plugins.transformers.filter((p) => p.textTransform)) {
           file.value = plugin.textTransform!(ctx, file.value.toString())

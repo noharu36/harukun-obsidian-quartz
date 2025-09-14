@@ -22,6 +22,35 @@ interface RenderComponents {
 }
 
 const headerRegex = new RegExp(/h[1-6]/)
+
+// Wikipedia風: 存在しない内部リンクに 'missing' クラスを付与
+function markMissingInternalLinks(root: Root, componentData: QuartzComponentProps) {
+  visit(root, "element", (node) => {
+    if (node.tagName !== "a" || typeof node.properties.href !== "string") return;
+
+    // クラスリスト取得（className優先、なければclass）
+    const rawClass = node.properties.className ?? node.properties.class ?? "";
+    const classList = Array.isArray(rawClass)
+      ? rawClass
+      : typeof rawClass === "string"
+        ? rawClass.split(" ")
+        : [];
+
+    if (!classList.includes("internal")) return;
+
+    const href = node.properties.href as string;
+    const slug = href.replace(/^\.\//, "").replace(/^\//, "").replace(/#.*/, "");
+    const exists = componentData.allFiles.some(f => typeof f.slug === "string" && f.slug.toLowerCase() === slug.toLowerCase());
+
+    // missingクラスの付与/除去
+    const newClassList = exists
+      ? classList.filter(c => c !== "missing")
+      : classList.includes("missing")
+        ? classList
+        : [...classList, "missing"];
+    node.properties.className = newClassList;
+  });
+}
 export function pageResources(
   baseDir: FullSlug | RelativeURL,
   staticResources: StaticResources,
@@ -196,6 +225,8 @@ export function renderPage(
   // make a deep copy of the tree so we don't remove the transclusion references
   // for the file cached in contentMap in build.ts
   const root = clone(componentData.tree) as Root
+
+  markMissingInternalLinks(root, componentData)
   renderTranscludes(root, cfg, slug, componentData)
 
   // set componentData.tree to the edited html that has transclusions rendered

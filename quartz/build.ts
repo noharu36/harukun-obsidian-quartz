@@ -6,7 +6,7 @@ import { rm } from "fs/promises"
 import { GlobbyFilterFunction, isGitIgnored } from "globby"
 import { styleText } from "util"
 import { parseMarkdown } from "./processors/parse"
-import { filterContent } from "./processors/filter"
+
 import { emitContent } from "./processors/emit"
 import cfg from "../quartz.config"
 import { FilePath, joinSegments, slugifyFilePath } from "./util/path"
@@ -82,9 +82,7 @@ async function buildQuartz(argv: Argv, mut: Mutex, clientRefresh: () => void) {
   ctx.allSlugs = allFiles.map((fp) => slugifyFilePath(fp as FilePath))
 
   const parsedFiles = await parseMarkdown(ctx, filePaths)
-  const filteredContent = filterContent(ctx, parsedFiles)
-
-  await emitContent(ctx, filteredContent)
+  await emitContent(ctx, parsedFiles)
   console.log(
     styleText("green", `Done processing ${markdownPaths.length} files in ${perf.timeSince()}`),
   )
@@ -251,12 +249,9 @@ async function rebuild(changes: ChangeEvent[], clientRefresh: () => void, buildD
   // update allFiles and then allSlugs with the consistent view of content map
   ctx.allFiles = Array.from(contentMap.keys())
   ctx.allSlugs = ctx.allFiles.map((fp) => slugifyFilePath(fp as FilePath))
-  let processedFiles = filterContent(
-    ctx,
-    Array.from(contentMap.values())
-      .filter((file) => file.type === "markdown")
-      .map((file) => file.content),
-  )
+  let processedFiles = Array.from(contentMap.values())
+    .filter((file) => file.type === "markdown")
+    .map((file) => file.content)
 
   let emittedFiles = 0
   for (const emitter of cfg.plugins.emitters) {
