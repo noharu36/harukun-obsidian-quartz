@@ -77,7 +77,7 @@ export function slugifyFilePath(fp: FilePath, excludeExt?: boolean): FullSlug {
     ext = ""
   }
 
-  let slug = sluggify(withoutFileExt)
+  let slug = sluggify(withoutFileExt).toLowerCase()
 
   // treat _index as index
   if (endsWith(slug, "_index")) {
